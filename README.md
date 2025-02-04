@@ -5,6 +5,11 @@ TumorSim.jl
 
 ***Simulation of tumoral growth in multiple dimensions with a special focus on fitness landscapes and adaptive therapy.***
 
+# How to launch an interactive dashboard
+```bash
+julia scripts/launch_dashboard.jl
+```
+
 # How to install
 <b>1.- Clone the git repo.</b>
 ```bash
