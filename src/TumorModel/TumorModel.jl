@@ -13,7 +13,7 @@ module TumorModel
     using TumorSim.Treatment
 
     #We create the Cell agent
-    @agent Cell GridAgent{3} begin
+    @agent struct Cell(GridAgent{3})
             time_alive::Int  # Time the cell has been alive
             genotype::BitArray # Genotype of the cell
             phylogeny::Array{Int} # Phylogeny of the cell
@@ -55,7 +55,7 @@ module TumorModel
 
         scheduler = Schedulers.Randomly()
 
-        model = ABM(Cell, space;properties, rng, scheduler) 
+        model = StandardABM(Cell, space;agent_step! = agent_step!, model_step! = model_step!, rng, properties, scheduler) 
         #we create each cell
         for cell in cell_pos
             add_agent!((cell[1],cell[2],cell[3]),model,0,BitArray([false for x in 1:ngenes]),[],[]) # With this one we use the scenario
@@ -102,7 +102,7 @@ module TumorModel
         if model.scenario.mix
             agents = allagents(model)
             usedpositions = [agent.pos for agent in agents]
-            shuffle!(model.rng,usedpositions)
+            shuffle!(abmrng(model),usedpositions)
             for (agent,pos) in zip(agents,usedpositions)
                 move_agent!(agent,pos,model)
             end
@@ -131,7 +131,7 @@ module TumorModel
     #If the cell is susceptible to the treatment, and treatment is active, it dies. Returns true if the cell has dies
     function treat!(agent,model)
         if model.treatment.active && agent.genotype[model.treatment.resistance_gene]!=1
-            kill_agent!(agent,model)
+            remove_agent!(agent,model)
             return true
         end
         return false
@@ -142,7 +142,7 @@ module TumorModel
         genes=findall(agent.genotype .!=1)
         if genes!=[] 
             for gene in genes
-                if rand(model.rng) < model.mutation_rate
+                if rand(abmrng(model)) < model.mutation_rate
                     agent.genotype[gene]=true
                     push!(agent.phylogeny,gene)
                 end
@@ -154,7 +154,7 @@ module TumorModel
     #With a probability (the kill rate of the treatment), the cell is subjected to a treatment check.
     #Returns true if the cell has died.
     function reproduce!(agent,model)
-        if rand(model.rng) < model.fitness[agent.genotype]
+        if rand(abmrng(model)) < model.fitness[agent.genotype]
             npos = nearby_positions(agent,model,1)
             if model.interaction_rule==:contact
                 aviable_pos = [pos for pos in npos if isempty(pos,model)]
@@ -164,17 +164,17 @@ module TumorModel
             
             if aviable_pos!=[]
                 agent.inhibited_by = []
-                if rand(model.rng) < model.treatment.kill_rate
+                if rand(abmrng(model)) < model.treatment.kill_rate
                     if treat!(agent,model)
                         return true
                     end
                 end
                 newgenom::BitArray = copy(agent.genotype)
                 newphylo::Array{Int64} = copy(agent.phylogeny)
-                newpos = sample(model.rng,aviable_pos)
+                newpos = sample(abmrng(model),aviable_pos)
                 if model.interaction_rule==:hierarchical_voter
                     if !isempty(newpos,model)
-                        kill_agent!(collect(agents_in_position(newpos,model))[1],model)
+                        remove_agent!(collect(agents_in_position(newpos,model))[1],model)
                     end
                 end
                 newagent = add_agent!(newpos,model,0,newgenom,newphylo,[])
@@ -193,11 +193,11 @@ module TumorModel
 
     #Move every cell to a random nearby space
     function move!(agent, model)
-        if rand(model.rng) < model.migration_rate
+        if rand(abmrng(model)) < model.migration_rate
             npos = nearby_positions(agent,model,1)
             empty_pos = [pos for pos in npos if isempty(pos,model)]
             if empty_pos!=[]
-                newpos = sample(model.rng,empty_pos)
+                newpos = sample(abmrng(model),empty_pos)
                 move_agent!(agent,newpos,model)
             end
         end
@@ -207,8 +207,8 @@ module TumorModel
     function die!(agent, model)
 
         #Base apoptosis rate (Turnover)
-        if rand(model.rng) < model.abs_death_rate
-            kill_agent!(agent, model)
+        if rand(abmrng(model)) < model.abs_death_rate
+            remove_agent!(agent, model)
             return true
         end
         return false
@@ -217,7 +217,7 @@ module TumorModel
     #we kill all non viable agents instantly to make our data cleaner
     function kill_non_viable!(agent, model)
         if !(agent.genotype in keys(model.fitness))
-            kill_agent!(agent,model)
+            remove_agent!(agent,model)
             return true
         end
         return false

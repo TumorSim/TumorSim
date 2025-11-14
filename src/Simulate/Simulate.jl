@@ -25,7 +25,7 @@ module Simulate
         #We stop (not a typo, stop != step) early if a size of max or 0 is reached
         step = create_stop_function(max_steps,Int(floor(treatment.detecting_size*1.5)))
 
-        adata::DataFrame, mdata::DataFrame = run!(model, agent_step!, model_step!, step; adata = agent_collect, mdata = model_collect)
+        adata::DataFrame, mdata::DataFrame = run!(model, step; adata = agent_collect, mdata = model_collect)
         
         fulld["Treatment_status"] = mdata
 

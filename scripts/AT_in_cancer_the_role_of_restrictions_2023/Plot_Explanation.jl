@@ -10,7 +10,7 @@ using BSON
 using DataFrames
 using Dates
 
-#We test adaptive and continuous therapy
+#We plot an example to explain the divergence between the relative cell distribution and the cells inhibiting the resistant cell's growth.
 
 
 
