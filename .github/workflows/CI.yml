@@ -4,6 +4,7 @@ on:
     branches:
       - main
       - dashboard
+      - ecDNA
     tags: '*'
   pull_request:
 concurrency:
